@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Affilika & Facebook CAPI Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    form { margin-bottom: 24px; }
+    label { display: block; margin: 8px 0 4px; }
+    input, select, button { margin-bottom: 12px; padding: 6px; }
+    .resp { background: #f7f7f7; padding: 10px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h2>事件上报 Demo (Affilika + Facebook CAPI)</h2>
+  <form id="eventForm">
+    <label>事件类型：</label>
+    <select id="action">
+      <option value="reg">注册</option>
+      <option value="dep">入款</option>
+    </select>
+    <label>tracking_id：</label>
+    <input type="text" id="tracking_id" required placeholder="请输入 tracking_id" />
+    <label>user_id（可选）：</label>
+    <input type="text" id="user_id" placeholder="用户ID（可选）" />
+    <button type="submit">提交事件</button>
+  </form>
+  <div class="resp" id="respBox"></div>
+  <script src="src/main.js"></script>
+</body>
+</html>
