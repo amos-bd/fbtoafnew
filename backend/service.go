@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -9,25 +9,42 @@ import (
 	"net/http"
 	"os"
 	"time"
-	"bytes"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 )
 
-func InitRedis() *redis.Client {
-	return redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_ADDR"),
-		Password: os.Getenv("REDIS_PASS"),
-		DB:       0,
-	})
+// 用 sync.Map 替换 Redis，用于事件去重和过期
+
+// 带过期自动清理（简单实现：存储时间戳，定期清理）
+type eventEntry struct {
+	CreatedAt time.Time
+}
+
+// 启动后台清理已过期事件
+func startCacheCleanup(expire time.Duration) {
+	go func() {
+		for {
+			time.Sleep(time.Hour)
+			now := time.Now()
+			eventCache.Range(func(key, value interface{}) bool {
+				entry := value.(eventEntry)
+				if now.Sub(entry.CreatedAt) > expire {
+					eventCache.Delete(key)
+				}
+				return true
+			})
+		}
+	}()
 }
 
 func CheckEventID(eventID string) (bool, error) {
-	ctx := context.Background()
 	key := fmt.Sprintf("event:%s", eventID)
-	ok, err := redisClient.SetNX(ctx, key, 1, 24*time.Hour).Result()
-	return ok, err
+	_, exists := eventCache.Load(key)
+	if exists {
+		return false, nil
+	}
+	eventCache.Store(key, eventEntry{CreatedAt: time.Now()})
+	return true, nil
 }
 
 func GenerateEventID() string {
@@ -67,7 +84,7 @@ func FbConversionAPI(action, eventID, trackingID, ip string) error {
 	}
 	url := fmt.Sprintf("https://graph.facebook.com/v18.0/%s/events?access_token=%s", pixelID, accessToken)
 	userData := map[string]interface{}{
-		"external_id":      Sha256(trackingID),
+		"external_id":       Sha256(trackingID),
 		"client_ip_address": ip,
 	}
 	payload := map[string]interface{}{
@@ -95,3 +112,5 @@ func Sha256(str string) string {
 	sum := sha256.Sum256([]byte(str))
 	return hex.EncodeToString(sum[:])
 }
+
+// 在 main() 入口处调用：startCacheCleanup(24*time.Hour)

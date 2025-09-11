@@ -3,24 +3,22 @@ package main
 import (
 	"log"
 	"os"
-	"time"
+	"sync"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/go-redis/redis/v8"
 )
 
-var (
-	redisClient *redis.Client
-)
+// 内存缓存，替代 Redis
+var eventCache sync.Map
 
 func main() {
 	_ = godotenv.Load()
 	db := InitDB()
 	defer db.Close()
-	redisClient = InitRedis()
+	// redisClient = InitRedis() // 移除 Redis 初始化
 
 	app := fiber.New()
 
@@ -36,7 +34,7 @@ func main() {
 
 		ok, err := CheckEventID(eventID)
 		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Redis error")
+			return fiber.NewError(fiber.StatusInternalServerError, "Cache error")
 		}
 		if !ok {
 			return fiber.NewError(fiber.StatusConflict, "Duplicate event")
