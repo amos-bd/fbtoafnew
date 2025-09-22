@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"math"
 
 	"github.com/shopspring/decimal"
 )
@@ -26,53 +25,39 @@ type BalanceData struct {
 	Integral     int64
 }
 
-// Balance method with patterns that need to be refactored
+// Balance method demonstrating refactored decimal comparison patterns
 func (b *Balance) Balance(amount decimal.Decimal, data *BalanceData) error {
-	// Pattern 1: amount <= 0 should be refactored to amount.Cmp(decimal.Zero) <= 0
-	amountFloat, _ := amount.Float64()
-	if amountFloat <= 0 {
-		return errors.New("amount must be positive")
-	}
-
-	// Pattern 2: amount < 0 && data.XXX < math.Abs(amount) patterns that need refactoring
+	// Pattern 2: Refactored from amount < 0 && data.XXX < math.Abs(amount) to use decimal.Cmp
+	absAmount := amount.Abs()
 	
-	// Example with decimal field
-	amountFloat2, _ := amount.Float64()
-	releaseFloat, _ := data.ReleaseBonus.Float64()
-	if amountFloat2 < 0 && releaseFloat < math.Abs(amountFloat2) {
+	// Example with decimal field: data.ReleaseBonus < math.Abs(amount) → data.ReleaseBonus.Cmp(absAmount) < 0
+	if amount.Cmp(decimal.Zero) < 0 && data.ReleaseBonus.Cmp(absAmount) < 0 {
 		return errors.New("insufficient release bonus")
 	}
 
-	// Example with integer field converted to float64
-	amountFloat3, _ := amount.Float64()
-	if amountFloat3 < 0 && float64(data.Equity) < math.Abs(amountFloat3) {
+	// Example with integer field: float64(data.Equity) < math.Abs(amount) → decimal.NewFromInt(data.Equity).Cmp(absAmount) < 0
+	if amount.Cmp(decimal.Zero) < 0 && decimal.NewFromInt(data.Equity).Cmp(absAmount) < 0 {
 		return errors.New("insufficient equity")
 	}
 
-	// Another decimal field example
-	amountFloat4, _ := amount.Float64()
-	cashFloat, _ := data.Cash.Float64()
-	if amountFloat4 < 0 && cashFloat < math.Abs(amountFloat4) {
+	// Another decimal field: data.Cash < math.Abs(amount) → data.Cash.Cmp(absAmount) < 0
+	if amount.Cmp(decimal.Zero) < 0 && data.Cash.Cmp(absAmount) < 0 {
 		return errors.New("insufficient cash")
 	}
 
-	// Another integer field example
-	amountFloat5, _ := amount.Float64()
-	if amountFloat5 < 0 && float64(data.Integral) < math.Abs(amountFloat5) {
+	// Another integer field: float64(data.Integral) < math.Abs(amount) → decimal.NewFromInt(data.Integral).Cmp(absAmount) < 0
+	if amount.Cmp(decimal.Zero) < 0 && decimal.NewFromInt(data.Integral).Cmp(absAmount) < 0 {
 		return errors.New("insufficient integral points")
 	}
 
-	// More patterns with amount <= 0
-	amountFloat6, _ := amount.Float64()
-	if amountFloat6 <= 0 {
-		return errors.New("invalid amount for processing")
+	// Complex pattern with bonus field: data.Bonus < math.Abs(amount) → data.Bonus.Cmp(absAmount) < 0
+	if amount.Cmp(decimal.Zero) < 0 && data.Bonus.Cmp(absAmount) < 0 {
+		return errors.New("insufficient bonus balance")
 	}
 
-	// Complex pattern with bonus field
-	amountFloat7, _ := amount.Float64()
-	bonusFloat, _ := data.Bonus.Float64()
-	if amountFloat7 < 0 && bonusFloat < math.Abs(amountFloat7) {
-		return errors.New("insufficient bonus balance")
+	// Pattern 1: Refactored from amount <= 0 to amount.Cmp(decimal.Zero) <= 0 (checking for zero amounts only here since negative amounts with sufficient balance are allowed)
+	if amount.Cmp(decimal.Zero) == 0 {
+		return errors.New("amount must be positive")
 	}
 
 	// Update balances (simplified logic)
